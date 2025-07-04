@@ -86,9 +86,8 @@ php artisan serve
 | Task                        | Command                                  |
 |----------------------------|------------------------------------------|
 | Start queue worker         | `php artisan queue:work`                 |
-| Start scheduler            | `php artisan schedule:work`              |
-| Sync channels manually     | `php artisan sync:channel`               |
-| Create stream key          | `php artisan create:stream-key {id}`     |
+| Start scheduler            | `php artisan schedule:work`             |
+| Create stream key          | `php artisan create:stream-key {channel}`|
 | Test webhook endpoint      | `GET /api/webhook/test`                  |
 
 ---
@@ -101,16 +100,12 @@ docker run -d --hostname rabbit --name rabbitmq \
   rabbitmq:3-management
 ```
 
-Access RabbitMQ Management UI:  
-👉 [http://localhost:15672](http://localhost:15672)  
-Username: `guest` | Password: `guest`
 
----
 
 ## 🎛 Admin Panel (Backpack)
 
 Access the admin dashboard at:  
-🌐 `http://localhost:8000/admin`
+🌐 `http://localhost:8000/`
 
 Login using seeded or manually created admin credentials.
 
