@@ -1,0 +1,78 @@
+name: streamloop
+recipe: laravel
+config:
+  php: "8.2"
+  composer_version: "2.2.12"
+  via: nginx
+  webroot: ./public/
+  database: mariadb
+  cache: redis
+  xdebug: true
+events:
+  post-start:
+    - rabbitmq: echo -e "\n\e[36mRABBITMQ IP ADDRESS:\e[32m"
+    - rabbitmq: hostname -i | cut -d' ' -f1
+services:
+  worker:
+    type: python:3.11
+    port: 31415
+    ssl: false
+    overrides:
+      volumes:
+        - ../TikTokGenerateStreamKeyWorker:/app # Path to worker code
+    command:  python /app/app.py
+    build_as_root:
+      - "apt update"
+      - "apt -y install python3-tk python3-pip"
+    build:
+      - "pip install -r requirements.txt"
+  adminer:
+    type: compose
+    services:
+      image: dehy/adminer
+      command: /bin/s6-svscan /etc/services.d
+    portforward: true
+  rabbitmq:
+    type: compose
+    services:
+      image: rabbitmq:3-management
+      hostname: "rabbit"
+      command: rabbitmq-server
+      ports:
+        - '15672:15672'
+        - '5672:5672'
+      environment:
+        RABBITMQ_DEFAULT_USER: "admin"
+        RABBITMQ_DEFAULT_PASS: "admin"
+        RABBITMQ_DEFAULT_VHOST: "/"
+      labels:
+        NAME: "rabbitmq"
+  appserver:
+    overrides:
+      environment:
+        XDEBUG_CONFIG: "discover_client_host=0 client_host=host.docker.internal log=/tmp/xdebug.log"
+    build_as_root:
+      - "apt update"
+      - "apt -y install ffmpeg proxychains4"
+      - "curl -sSLf -o /usr/local/bin/install-php-extensions https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions"
+      - "chmod +x /usr/local/bin/install-php-extensions"
+      - "install-php-extensions sockets"
+      - "pecl uninstall xdebug"
+      - "pecl install xdebug-3.2.2"
+tooling:
+  xdebug:
+    service: appserver
+    description: "Run php with xdebug"
+    cmd: php -dxdebug.start_with_request=yes
+  pint:
+    service: appserver
+    description: "Format project with pint"
+    cmd: pint --config=pint.json
+  queue:
+    service: appserver
+    description: "Run the live stream worker"
+    cmd: php -dxdebug.start_with_request=yes artisan queue:work --queue=live-stream --timeout=0 --tries=1
+proxy:
+  adminer:
+    - adminer.streamloop.lndo.site
+  worker:
